@@ -36,11 +36,25 @@ const generateAccessAndRefreshToken = async (userid) => {
 }
 
 const getUserList = asyncHandler(async(req, res) => {
+
+    const pageOptions = {
+        page: parseInt(req.query.page, 10) || 0,
+        limit: parseInt(req.query.limit, 10) || 10
+    }
+
+    const users = await User.find({})
+      .skip(pageOptions.page * pageOptions.limit)
+      .limit(pageOptions.limit);
+
+    if (!users?.length) {
+        throw new ApiError(404, "Users not found.")
+    }
+
     return res
     .status(200)
     .json(new ApiResponse(
         200,
-        req.user,
+        users,
         "User list fetched successfully"
     ))
 });
@@ -91,7 +105,7 @@ const registerUser = asyncHandler( async (req, res) => {
 
     const avatar = await uploadOnCloudinay(avatarLocalPath);
 
-    console.log(`response from cloudinary `, avatar);
+    // console.log(`response from cloudinary `, avatar);
     if(!avatar) {
         throw new ApiError(400, "Error in Avatar upload on cloudinary");
     }
@@ -130,17 +144,17 @@ const loginUser = asyncHandler( async (req, res) => {
     // generate access and refresh token
     // send cookie to frontend
 
-    const { email, username, password } = req.body;
+    const { email, password } = req.body;
 
     // console.log(req.body, ' body ');
     // console.log(email , username , 'inputs are ');
 
-    if(!email && !username) {
-        throw new ApiError(400, "Username or email is required");        
+    if(!email) {
+        throw new ApiError(400, "Email is required");        
     }
 
     const user = await User.findOne({
-        $or : [ {email} , {username} ]
+        $or : [ {email} ]
     });
 
     if(!user) {
@@ -302,79 +316,6 @@ const updateUserAvatar = asyncHandler( async(req, res) => {
 });
 
 
-// get channel details
-const getUserChannelProfile = asyncHandler(async(req, res) => {
-    const { username } = req.params;
-
-    if (!username?.trim()) {
-        throw new ApiError(400, "Username is missing")
-    }
-
-    const channel = await User.aggregate([
-        {
-            $match: {
-                username: username?.toLowerCase()
-            }
-        },
-        {
-            $lookup: {
-                from: "subscriptions",
-                localField: "_id",
-                foreignField: "channel",
-                as: "subscribers"
-            }
-        },
-        {
-            $lookup: {
-                from: "subscriptions",
-                localField: "_id",
-                foreignField: "subscriber",
-                as: "subscribedTo"
-            }
-        },
-        {
-            $addFields: {
-                subscribersCount: {
-                    $size: "$subscribers"
-                },
-                channelsSubscribedToCount: {
-                    $size: "$subscribedTo"
-                },
-                isSubscribed: {
-                    $cond: {
-                        if: {$in: [req.user?._id, "$subscribers.subscriber"]},
-                        then: true,
-                        else: false
-                    }
-                }
-            }
-        },
-        {
-            $project: {
-                fullName: 1,
-                username: 1,
-                subscribersCount: 1,
-                channelsSubscribedToCount: 1,
-                isSubscribed: 1,
-                avatar: 1,
-                coverImage: 1,
-                email: 1
-
-            }
-        }
-    ]);
-
-    if (!channel?.length) {
-        throw new ApiError(404, "channel does not exists")
-    }
-
-    return res
-    .status(200)
-    .json(
-        new ApiResponse(200, channel[0], "User channel fetched successfully")
-    )
-});
-
 
 export {
     getUserList,
@@ -384,6 +325,5 @@ export {
     changePassword,
     getCurrentUser,
     updateAccountDetails,
-    updateUserAvatar,
-    getUserChannelProfile
+    updateUserAvatar
 }
