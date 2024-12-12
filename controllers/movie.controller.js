@@ -54,10 +54,9 @@ const getMovie = asyncHandler(async(req, res) => {
     ))
 });
 
-// get single movies details
+// create new movie record
 const createMovie = asyncHandler(async(req, res) => {
-
-    console.log(req.body);
+    // console.log(req.body);
     const {title, runtime, genres} = req.body;
     
     if(title==="") {
@@ -87,6 +86,7 @@ const createMovie = asyncHandler(async(req, res) => {
     );
 
 });
+
 
 
 export { getMovieList, getMovie, createMovie }
