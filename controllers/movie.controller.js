@@ -57,7 +57,7 @@ const getMovie = asyncHandler(async(req, res) => {
 // create new movie record
 const createMovie = asyncHandler(async(req, res) => {
     // console.log(req.body);
-    const {title, runtime, genres} = req.body;
+    const {title, runtime, genres, year, cast, poster, num_mflix_comments} = req.body;
     
     if(title==="") {
         throw new ApiError(400, "Error in creation, Title is required");        
@@ -68,11 +68,23 @@ const createMovie = asyncHandler(async(req, res) => {
     if(!genres.length) {
         throw new ApiError(400, "Error in creation, Genres is required");        
     }
+    if(!cast.length) {
+        throw new ApiError(400, "Error in creation, Cast is required");        
+    }
+    if(year==="") {
+        throw new ApiError(400, "Error in creation, Year is required");        
+    }
+    if(poster==="") {
+        throw new ApiError(400, "Error in creation, Poster image path is required");        
+    }
+    if(num_mflix_comments==="") {
+        throw new ApiError(400, "Error in creation, Number of comments is required");        
+    }
 
     const movie = await Movie.create({
         title,
         runtime,
-        genres
+        genres, year, cast, poster, num_mflix_comments
     });
 
     const createdMovie = await Movie.findById(movie._id).select();
@@ -82,11 +94,52 @@ const createMovie = asyncHandler(async(req, res) => {
     }
 
     return res.status(201).json(
-        new ApiResponse(200, createdUser, "Movie created successfully.")
+        new ApiResponse(200, createdMovie, "Movie created successfully.")
     );
 
 });
 
+// update the existing movie details
+const updateMovie = asyncHandler(async(req, res)=> {
+    // console.log(req.body, "posted data");
+    const id = req.params.id;
+    const {title, runtime, genres, cast, year, poster, num_mflix_comments } = req.body;
+
+    const movie = await Movie.findById(id) || {};
+
+    if (!Object.keys(movie).length) {
+        throw new ApiError(404, "Movie not found to update.")
+    }
+    // update values
+    movie.title = title
+    movie.runtime = runtime
+    movie.genres = genres
+    movie.cast = cast
+    movie.year = year
+    movie.poster = poster
+    movie.num_mflix_comments = num_mflix_comments
+
+    await movie.save({validateBeforeSave: false})
+
+    return res.status(200).json(
+        new ApiResponse(200, movie, "Movie updated successfully")
+    );
+});
+
+// delete the movie record
+const deleteMovie = asyncHandler(async(req, res)=> {
+    const id = req.params.id;
+    const movie = await Movie.findById(id) || {};    
+
+    if (!Object.keys(movie).length) {
+        throw new ApiError(404, "Movie not found to delete.")
+    }
+    await Movie.findByIdAndDelete(id);
+
+    res.status(200).json(
+        new ApiResponse(200, "", "Movie deleted successfully")
+    );
+});
 
 
-export { getMovieList, getMovie, createMovie }
+export { getMovieList, getMovie, createMovie, updateMovie, deleteMovie }
