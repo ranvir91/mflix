@@ -36,16 +36,16 @@ const generateAccessAndRefreshToken = async (userid) => {
 }
 
 const getUserList = asyncHandler(async(req, res) => {
-
-    const pageOptions = {
-        page: parseInt(req.query.page, 10) || 0,
-        limit: parseInt(req.query.limit, 10) || 10
+    const pg = {
+        page: parseInt(req.query.page, 10) || 1, // Get page number from query parameters
+        limit: parseInt(req.query.limit, 10) || 10, // Get limit from query parameters
     }
+    pg.offset = (pg.page - 1) * pg.limit // Calculate the offset
 
-    const users = await User.find({})
-      .skip(pageOptions.page * pageOptions.limit)
-      .limit(pageOptions.limit);
-
+    const users = await User.find().skip(pg.offset).limit(pg.limit).exec();
+    const totalItems = await User.countDocuments({});
+    const totalPages = Math.ceil(totalItems / pg.limit);
+    
     if (!users?.length) {
         throw new ApiError(404, "Users not found.")
     }
@@ -54,7 +54,7 @@ const getUserList = asyncHandler(async(req, res) => {
     .status(200)
     .json(new ApiResponse(
         200,
-        users,
+        {users, paginate : {totalItems, totalPages, currentPage:pg.page} },
         "User list fetched successfully"
     ))
 });
